@@ -30,7 +30,7 @@ export class GoogleAgentAdapter implements IAIAgentService {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         const chat = this.client.chats.create({
-          model: 'gemini-3.6-flash',
+          model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
           config: {
             systemInstruction: this.instruction
           },
