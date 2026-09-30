@@ -1,0 +1,45 @@
+# Dependências do Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Variáveis de ambiente e segredos (CRÍTICO: nunca comitar chaves de API e senhas SMTP)
+.env
+.env.*
+!.env.example
+
+# Build e compilação do TypeScript
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Logs do sistema e da aplicação
+logs/
+*.log
+
+# Arquivos temporários e scripts de testes isolados
+test-email.mjs
+test-*.mjs
+test-*.js
+
+# Cobertura de testes e relatórios
+coverage/
+.nyc_output/
+
+# Configurações de IDEs e editores de código
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Arquivos do sistema operacional
+.DS_Store
+Thumbs.db
+desktop.ini
