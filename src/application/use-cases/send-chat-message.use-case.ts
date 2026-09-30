@@ -1,12 +1,15 @@
 import { IAIAgentService } from '../../core/interfaces/ai-agent.interface';
 import { ChatMessage, ChatResponse } from '../../core/domain/chat.entity';
-import { EmailService, LeadData } from '../../infrastructure/mail/nodemailer.service';
+import { EmailService, IEmailService, LeadData } from '../../infrastructure/mail/nodemailer.service';
 
 export class SendChatMessageUseCase {
-  private emailService: EmailService;
+  private readonly emailService: IEmailService;
 
-  constructor(private readonly aiService: IAIAgentService) {
-    this.emailService = new EmailService();
+  constructor(
+    private readonly aiService: IAIAgentService,
+    emailService?: IEmailService
+  ) {
+    this.emailService = emailService ?? new EmailService();
   }
 
   async execute(history: ChatMessage[], prompt: string): Promise<ChatResponse> {

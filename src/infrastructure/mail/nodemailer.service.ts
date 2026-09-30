@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer';
+import nodemailer, { type Transporter } from 'nodemailer';
 
 export interface LeadData {
   nome: string;
@@ -7,8 +7,12 @@ export interface LeadData {
   comentario: string;
 }
 
-export class EmailService {
-  private transporter: nodemailer.Transporter;
+export interface IEmailService {
+  sendLeadNotification(lead: LeadData): Promise<void>;
+}
+
+export class EmailService implements IEmailService {
+  private transporter: Transporter;
 
   constructor() {
     this.transporter = nodemailer.createTransport({

@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import { checkOriginAllowed } from './security.middleware';
+import { checkOriginAllowed, getIsDev } from './security.middleware';
 
 describe('CORS checkOriginAllowed', () => {
   describe('Modo Desenvolvimento (isDev = true)', () => {
@@ -52,6 +52,12 @@ describe('CORS checkOriginAllowed', () => {
     it('deve bloquear domínio externo malicioso em produção', () => {
       assert.strictEqual(checkOriginAllowed('https://hacker.com', false), false);
     });
+
+    it('deve bloquear tentativas de spoofing de domínio (prefixo ou sufixo malicioso)', () => {
+      assert.strictEqual(checkOriginAllowed('https://hadtelecom.net.br.attacker.com', false), false);
+      assert.strictEqual(checkOriginAllowed('https://fake-hadtelecom.net.br', false), false);
+      assert.strictEqual(checkOriginAllowed('https://not-hadtelecom.net.br', false), false);
+    });
   });
 
   describe('Requisições sem header Origin (Postman, mobile, curl)', () => {
@@ -62,5 +68,41 @@ describe('CORS checkOriginAllowed', () => {
     it('deve permitir quando origin for indefinido em produção', () => {
       assert.strictEqual(checkOriginAllowed(undefined, false), true);
     });
+  });
+});
+
+describe('getIsDev helper', () => {
+  const originalEnv = process.env.NODE_ENV;
+  const originalArgv = [...process.argv];
+
+  it('deve retornar false quando NODE_ENV for production e sem flag --dev', () => {
+    process.env.NODE_ENV = 'production';
+    process.argv = process.argv.filter((arg) => arg !== '--dev');
+    try {
+      assert.strictEqual(getIsDev(), false);
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+      process.argv = [...originalArgv];
+    }
+  });
+
+  it('deve retornar true quando NODE_ENV for development', () => {
+    process.env.NODE_ENV = 'development';
+    try {
+      assert.strictEqual(getIsDev(), true);
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+    }
+  });
+
+  it('deve retornar true se a flag --dev estiver nos argumentos mesmo com NODE_ENV de produção', () => {
+    process.env.NODE_ENV = 'production';
+    process.argv.push('--dev');
+    try {
+      assert.strictEqual(getIsDev(), true);
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+      process.argv = [...originalArgv];
+    }
   });
 });
