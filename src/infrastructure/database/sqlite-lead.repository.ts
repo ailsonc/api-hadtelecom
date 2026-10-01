@@ -7,6 +7,7 @@ export interface LeadRecord {
     email: string;
     whatsapp: string;
     comentario: string;
+    status?: string;
     created_at?: string;
 }
 
@@ -38,19 +39,30 @@ export class SqliteLeadRepository implements ILeadRepository {
         email TEXT NOT NULL,
         whatsapp TEXT NOT NULL,
         comentario TEXT NOT NULL,
+        status TEXT DEFAULT 'enviado',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `;
         this.db.exec(query);
+
+        // Migração suave caso a tabela já existisse sem a coluna status
+        const columns = this.db.pragma('table_info(leads)') as Array<{ name: string }>;
+        const hasStatus = columns.some((col) => col.name === 'status');
+        if (!hasStatus) {
+            this.db.exec("ALTER TABLE leads ADD COLUMN status TEXT DEFAULT 'enviado'");
+        }
     }
 
     save(lead: Omit<LeadRecord, 'id' | 'created_at'>): void {
         const stmt = this.db.prepare(`
-      INSERT INTO leads (nome, email, whatsapp, comentario)
-      VALUES (@nome, @email, @whatsapp, @comentario)
+      INSERT INTO leads (nome, email, whatsapp, comentario, status)
+      VALUES (@nome, @email, @whatsapp, @comentario, @status)
     `);
 
-        stmt.run(lead);
+        stmt.run({
+            ...lead,
+            status: lead.status || 'enviado'
+        });
     }
 
     findAll(): LeadRecord[] {

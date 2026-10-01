@@ -100,18 +100,20 @@ LEAD_DATA>>>`;
       const useCase = new SendChatMessageUseCase(mockAiService, mockLeadRepo);
       const response = await useCase.execute([], 'Aqui estão meus dados');
 
-      // Verifica se a resposta foi limpa sem o bloco técnico
+      // Verifica se a resposta foi limpa sem o bloco técnico e status foi retornado
       assert.strictEqual(
         response.reply,
         'Obrigado pelas informações! Um especialista entrará em contato em breve.'
       );
+      assert.strictEqual(response.status, 'enviado');
 
-      // Verifica se o lead foi passado corretamente para o repositório
+      // Verifica se o lead foi passado corretamente para o repositório com status
       assert.deepStrictEqual(capturedLead, {
         nome: 'João Silva',
         email: 'joao@email.com',
         whatsapp: '11999999999',
         comentario: 'Interesse em TR-069',
+        status: 'enviado',
       });
     });
 

@@ -6,4 +6,5 @@ export interface ChatMessage {
 export interface ChatResponse {
   reply: string;
   timestamp: Date;
+  status?: string;
 }

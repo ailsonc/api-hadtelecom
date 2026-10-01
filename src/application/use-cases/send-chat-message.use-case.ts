@@ -22,6 +22,8 @@ export class SendChatMessageUseCase {
     const match = rawReply.match(/<<<LEAD_DATA\s*([\s\S]*?)\s*LEAD_DATA>>>/);
     let cleanReply = rawReply;
 
+    let leadSaved = false;
+
     if (match && match[1]) {
       cleanReply = rawReply.replace(/<<<LEAD_DATA[\s\S]*?LEAD_DATA>>>/, '').trim();
       const jsonContent = match[1].trim();
@@ -34,18 +36,26 @@ export class SendChatMessageUseCase {
           nome: leadData.nome,
           email: leadData.email,
           whatsapp: leadData.whatsapp,
-          comentario: leadData.comentario
+          comentario: leadData.comentario,
+          status: 'enviado'
         });
 
+        leadSaved = true;
         console.log('[LEAD] Salvo com sucesso no SQLite!');
       } catch (err) {
         console.error('[LEAD] Erro ao persistir no SQLite:', err);
       }
     }
 
-    return {
+    const response: ChatResponse = {
       reply: cleanReply,
       timestamp: new Date()
     };
+
+    if (leadSaved) {
+      response.status = 'enviado';
+    }
+
+    return response;
   }
 }

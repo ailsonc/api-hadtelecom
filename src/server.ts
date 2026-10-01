@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import express, { Request, Response, NextFunction } from 'express';
 import { securityMiddlewares } from './infrastructure/http/middlewares/security.middleware';
-import { GoogleAgentAdapter } from './infrastructure/ai/google-agent.adapter';
+import { GroqAgentAdapter } from './infrastructure/ai/groq-agent.adapter';
 import { SendChatMessageUseCase } from './application/use-cases/send-chat-message.use-case';
 import { ChatController } from './infrastructure/http/controllers/chat.controller';
 import { AuthController } from './infrastructure/http/controllers/auth.controller';
@@ -14,7 +14,7 @@ app.use(securityMiddlewares);
 
 // Injeção de dependências
 const leadRepo = new SqliteLeadRepository();
-const aiAdapter = new GoogleAgentAdapter(process.env.GEMINI_API_KEY || '');
+const aiAdapter = new GroqAgentAdapter(process.env.GROQ_API_KEY || '');
 const sendChatUseCase = new SendChatMessageUseCase(aiAdapter, leadRepo);
 const chatController = new ChatController(sendChatUseCase);
 const authController = new AuthController();
