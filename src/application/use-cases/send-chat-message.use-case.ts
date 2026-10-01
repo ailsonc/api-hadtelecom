@@ -1,15 +1,12 @@
 import { IAIAgentService } from '../../core/interfaces/ai-agent.interface';
 import { ChatMessage, ChatResponse } from '../../core/domain/chat.entity';
-import { EmailService, IEmailService, LeadData } from '../../infrastructure/mail/nodemailer.service';
+import { SqliteLeadRepository } from '../../infrastructure/database/sqlite-lead.repository';
 
 export class SendChatMessageUseCase {
-  private readonly emailService: IEmailService;
+  private leadRepo: SqliteLeadRepository;
 
-  constructor(
-    private readonly aiService: IAIAgentService,
-    emailService?: IEmailService
-  ) {
-    this.emailService = emailService ?? new EmailService();
+  constructor(private readonly aiService: IAIAgentService) {
+    this.leadRepo = new SqliteLeadRepository();
   }
 
   async execute(history: ChatMessage[], prompt: string): Promise<ChatResponse> {
@@ -19,29 +16,28 @@ export class SendChatMessageUseCase {
 
     const rawReply = await this.aiService.generateResponse(history, prompt);
 
-    console.log('[DEBUG LLM REPLY]:', rawReply);
-
     const match = rawReply.match(/<<<LEAD_DATA\s*([\s\S]*?)\s*LEAD_DATA>>>/);
     let cleanReply = rawReply;
 
     if (match && match[1]) {
-      console.log('[LEAD] Bloco de lead detectado!');
       cleanReply = rawReply.replace(/<<<LEAD_DATA[\s\S]*?LEAD_DATA>>>/, '').trim();
-
       const jsonContent = match[1].trim();
 
       try {
-        const leadData: LeadData = JSON.parse(jsonContent);
-        console.log('[LEAD] Enviando via SMTP Titan HostGator...', leadData);
-        
-        // Envia o e-mail de forma assíncrona
-        await this.emailService.sendLeadNotification(leadData);
-        console.log('[LEAD] E-mail enviado com sucesso via HostGator!');
+        const leadData = JSON.parse(jsonContent);
+
+        // Salva instantaneamente no SQLite sem latência de rede
+        this.leadRepo.save({
+          nome: leadData.nome,
+          email: leadData.email,
+          whatsapp: leadData.whatsapp,
+          comentario: leadData.comentario
+        });
+
+        console.log('[LEAD] Salvo com sucesso no SQLite!');
       } catch (err) {
-        console.error('[LEAD] Erro ao enviar notificação de lead:', err);
+        console.error('[LEAD] Erro ao persistir no SQLite:', err);
       }
-    } else {
-      console.log('[LEAD] Nenhum bloco de lead foi encontrado nesta resposta.');
     }
 
     return {
