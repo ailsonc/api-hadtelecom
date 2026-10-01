@@ -13,11 +13,11 @@ app.use(express.json());
 app.use(securityMiddlewares);
 
 // Injeção de dependências
+const leadRepo = new SqliteLeadRepository();
 const aiAdapter = new GoogleAgentAdapter(process.env.GEMINI_API_KEY || '');
-const sendChatUseCase = new SendChatMessageUseCase(aiAdapter);
+const sendChatUseCase = new SendChatMessageUseCase(aiAdapter, leadRepo);
 const chatController = new ChatController(sendChatUseCase);
 const authController = new AuthController();
-const leadRepo = new SqliteLeadRepository();
 
 // Rota pública do Chat
 app.post('/api/chat', (req: Request, res: Response) => chatController.handle(req, res));

@@ -1,12 +1,15 @@
 import { IAIAgentService } from '../../core/interfaces/ai-agent.interface';
 import { ChatMessage, ChatResponse } from '../../core/domain/chat.entity';
-import { SqliteLeadRepository } from '../../infrastructure/database/sqlite-lead.repository';
+import { ILeadRepository, SqliteLeadRepository } from '../../infrastructure/database/sqlite-lead.repository';
 
 export class SendChatMessageUseCase {
-  private leadRepo: SqliteLeadRepository;
+  private readonly leadRepo: ILeadRepository;
 
-  constructor(private readonly aiService: IAIAgentService) {
-    this.leadRepo = new SqliteLeadRepository();
+  constructor(
+    private readonly aiService: IAIAgentService,
+    leadRepo?: ILeadRepository
+  ) {
+    this.leadRepo = leadRepo ?? new SqliteLeadRepository();
   }
 
   async execute(history: ChatMessage[], prompt: string): Promise<ChatResponse> {

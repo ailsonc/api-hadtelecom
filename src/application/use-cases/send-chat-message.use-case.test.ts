@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { SendChatMessageUseCase } from './send-chat-message.use-case';
 import { IAIAgentService } from '../../core/interfaces/ai-agent.interface';
-import { IEmailService, LeadData } from '../../infrastructure/mail/nodemailer.service';
+import { ILeadRepository, LeadRecord } from '../../infrastructure/database/sqlite-lead.repository';
 import { ChatMessage } from '../../core/domain/chat.entity';
 
 describe('SendChatMessageUseCase', () => {
@@ -73,8 +73,8 @@ describe('SendChatMessageUseCase', () => {
     });
   });
 
-  describe('Captura e envio de Leads', () => {
-    it('deve extrair os dados do lead, enviar e-mail e remover o bloco LEAD_DATA da resposta', async () => {
+  describe('Captura e persistência de Leads', () => {
+    it('deve extrair os dados do lead, salvar no repositório e remover o bloco LEAD_DATA da resposta', async () => {
       const rawAiResponse = `Obrigado pelas informações! Um especialista entrará em contato em breve.
 <<<LEAD_DATA
 {
@@ -85,18 +85,19 @@ describe('SendChatMessageUseCase', () => {
 }
 LEAD_DATA>>>`;
 
-      let capturedLead: LeadData | null = null;
-      const mockEmailService: IEmailService = {
-        sendLeadNotification: async (lead) => {
+      let capturedLead: Omit<LeadRecord, 'id' | 'created_at'> | null = null;
+      const mockLeadRepo: ILeadRepository = {
+        save: (lead) => {
           capturedLead = lead;
         },
+        findAll: () => [],
       };
 
       const mockAiService: IAIAgentService = {
         generateResponse: async () => rawAiResponse,
       };
 
-      const useCase = new SendChatMessageUseCase(mockAiService, mockEmailService);
+      const useCase = new SendChatMessageUseCase(mockAiService, mockLeadRepo);
       const response = await useCase.execute([], 'Aqui estão meus dados');
 
       // Verifica se a resposta foi limpa sem o bloco técnico
@@ -105,7 +106,7 @@ LEAD_DATA>>>`;
         'Obrigado pelas informações! Um especialista entrará em contato em breve.'
       );
 
-      // Verifica se o lead foi passado corretamente para o serviço de email
+      // Verifica se o lead foi passado corretamente para o repositório
       assert.deepStrictEqual(capturedLead, {
         nome: 'João Silva',
         email: 'joao@email.com',
@@ -120,26 +121,27 @@ LEAD_DATA>>>`;
 { nome: "Incompleto" sem_fechar_aspas
 LEAD_DATA>>>`;
 
-      let emailServiceCalled = false;
-      const mockEmailService: IEmailService = {
-        sendLeadNotification: async () => {
-          emailServiceCalled = true;
+      let repoCalled = false;
+      const mockLeadRepo: ILeadRepository = {
+        save: () => {
+          repoCalled = true;
         },
+        findAll: () => [],
       };
 
       const mockAiService: IAIAgentService = {
         generateResponse: async () => rawAiResponse,
       };
 
-      const useCase = new SendChatMessageUseCase(mockAiService, mockEmailService);
+      const useCase = new SendChatMessageUseCase(mockAiService, mockLeadRepo);
       const response = await useCase.execute([], 'Dados');
 
       assert.strictEqual(response.reply, 'Recebido!');
-      assert.strictEqual(emailServiceCalled, false);
+      assert.strictEqual(repoCalled, false);
       assert.ok(response.timestamp instanceof Date);
     });
 
-    it('não deve quebrar o fluxo se o serviço de e-mail falhar', async () => {
+    it('não deve quebrar o fluxo se o repositório de lead falhar ao salvar', async () => {
       const rawAiResponse = `Sucesso!
 <<<LEAD_DATA
 {
@@ -150,17 +152,18 @@ LEAD_DATA>>>`;
 }
 LEAD_DATA>>>`;
 
-      const mockEmailService: IEmailService = {
-        sendLeadNotification: async () => {
-          throw new Error('Falha de conexão SMTP');
+      const mockLeadRepo: ILeadRepository = {
+        save: () => {
+          throw new Error('Falha no banco SQLite');
         },
+        findAll: () => [],
       };
 
       const mockAiService: IAIAgentService = {
         generateResponse: async () => rawAiResponse,
       };
 
-      const useCase = new SendChatMessageUseCase(mockAiService, mockEmailService);
+      const useCase = new SendChatMessageUseCase(mockAiService, mockLeadRepo);
       const response = await useCase.execute([], 'Meus dados');
 
       assert.strictEqual(response.reply, 'Sucesso!');

@@ -10,7 +10,12 @@ export interface LeadRecord {
     created_at?: string;
 }
 
-export class SqliteLeadRepository {
+export interface ILeadRepository {
+    save(lead: Omit<LeadRecord, 'id' | 'created_at'>): void;
+    findAll(): LeadRecord[];
+}
+
+export class SqliteLeadRepository implements ILeadRepository {
     private db: Database.Database;
 
     constructor() {
