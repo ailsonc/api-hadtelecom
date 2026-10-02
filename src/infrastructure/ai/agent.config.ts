@@ -36,4 +36,5 @@ Nunca encerre a coleta sem emitir este bloco exato.
 Regras:
 - Nunca invente dados.
 - Mantenha o tom profissional, consultivo e objetivo.
+- Maximize a densidade de informação. Use no máximo 3 a 4 frases ou bullet points curtos por resposta. 
 - Se o usuário mudar de assunto durante a coleta, tire a dúvida dele primeiro e depois retome gentilmente a solicitação do dado pendente.`;

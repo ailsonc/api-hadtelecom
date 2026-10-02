@@ -15,18 +15,32 @@ describe('GroqAgentAdapter', () => {
     assert.strictEqual(adapter.description, 'Descrição Teste');
     assert.strictEqual(adapter.instruction, 'Instrução Teste');
     assert.strictEqual(adapter.model, 'llama-3.1-8b-instant');
+    assert.strictEqual(adapter.maxTokens, 700);
+  });
+
+  it('deve aceitar maxTokens customizado via construtor', () => {
+    const adapter = new GroqAgentAdapter(
+      'gsk_test_key',
+      undefined,
+      undefined,
+      undefined,
+      500
+    );
+    assert.strictEqual(adapter.maxTokens, 500);
   });
 
   it('deve formatar o histórico mapeando role "model" para "assistant"', async () => {
     const adapter = new GroqAgentAdapter('gsk_test_key');
 
     let interceptedMessages: any[] = [];
+    let interceptedParams: any = null;
 
     // Mock do client Groq
     (adapter as any).client = {
       chat: {
         completions: {
           create: async (params: any) => {
+            interceptedParams = params;
             interceptedMessages = params.messages;
             return {
               choices: [
@@ -50,6 +64,7 @@ describe('GroqAgentAdapter', () => {
     const response = await adapter.generateResponse(history, 'Qual o horário de atendimento?');
 
     assert.strictEqual(response, 'Resposta do modelo Groq');
+    assert.strictEqual(interceptedParams?.max_tokens, 700);
     assert.strictEqual(interceptedMessages.length, 4);
     assert.strictEqual(interceptedMessages[0].role, 'system');
     assert.strictEqual(interceptedMessages[1].role, 'user');

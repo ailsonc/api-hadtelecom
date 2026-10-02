@@ -8,18 +8,21 @@ export class GroqAgentAdapter implements IAIAgentService {
   public readonly description: string;
   public readonly instruction: string;
   public readonly model: string;
+  public readonly maxTokens: number;
 
   constructor(
     apiKey?: string,
     description: string = AGENT_DESCRIPTION,
     instruction: string = AGENT_INSTRUCTION,
-    model?: string
+    model?: string,
+    maxTokens?: number
   ) {
     const key = apiKey || process.env.GROQ_API_KEY || '';
     this.client = new Groq({ apiKey: key });
     this.description = description;
     this.instruction = instruction;
     this.model = model || process.env.GROQ_MODEL || 'qwen/qwen3.8-27b';
+    this.maxTokens = maxTokens ?? (process.env.GROQ_MAX_TOKENS ? Number(process.env.GROQ_MAX_TOKENS) : 700);
   }
 
   async generateResponse(history: ChatMessage[], prompt: string): Promise<string> {
@@ -38,6 +41,7 @@ export class GroqAgentAdapter implements IAIAgentService {
       model: this.model,
       messages,
       temperature: 0.6,
+      max_tokens: this.maxTokens,
     });
 
     return completion.choices[0]?.message?.content || 'Sem resposta do modelo.';

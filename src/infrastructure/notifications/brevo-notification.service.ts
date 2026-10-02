@@ -8,7 +8,7 @@ export class BrevoNotificationService implements INotificationService {
   constructor(apiKey?: string, senderEmail?: string, notifyEmailTo?: string) {
     this.apiKey = apiKey ?? process.env.BREVO_API_KEY ?? '';
     this.senderEmail = senderEmail ?? process.env.BREVO_SENDER_EMAIL ?? '';
-    this.notifyEmailTo = notifyEmailTo ?? process.env.NOTIFY_EMAIL_TO ?? 'ailsonlcosta@gmail.com';
+    this.notifyEmailTo = notifyEmailTo ?? process.env.BREVO_NOTIFY_EMAIL_TO ?? 'ailsonlcosta@gmail.com';
   }
 
   async notifyNewLead(lead: LeadNotificationData): Promise<void> {

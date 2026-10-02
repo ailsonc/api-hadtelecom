@@ -15,6 +15,19 @@ describe('GoogleAgentAdapter', () => {
     assert.strictEqual(adapter.description, 'Descrição Teste Google');
     assert.strictEqual(adapter.instruction, 'Instrução Teste Google');
     assert.strictEqual(adapter.model, 'gemini-2.5-pro');
+    assert.strictEqual(adapter.maxTokens, 700);
+  });
+
+  it('deve aceitar maxTokens customizado via construtor', () => {
+    const adapter = new GoogleAgentAdapter(
+      'gemini_test_key',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      400
+    );
+    assert.strictEqual(adapter.maxTokens, 400);
   });
 
   it('deve formatar o histórico e chamar chats.create e sendMessage', async () => {
@@ -45,6 +58,7 @@ describe('GoogleAgentAdapter', () => {
     const response = await adapter.generateResponse(history, 'Quais são os planos?');
 
     assert.strictEqual(response, 'Resposta do Gemini');
+    assert.strictEqual(createParams.config.maxOutputTokens, 700);
     assert.strictEqual(createParams.history.length, 2);
     assert.deepStrictEqual(createParams.history[0], {
       role: 'user',
