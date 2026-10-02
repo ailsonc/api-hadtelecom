@@ -1,6 +1,6 @@
 import { createClient, type Client } from '@libsql/client';
 import { INotificationService } from '../../core/interfaces/notification-service.interface';
-import { NtfyNotificationService } from '../notifications/ntfy-notification.service';
+import { BrevoNotificationService } from '../notifications/brevo-notification.service';
 
 export interface LeadRecord {
     id?: number;
@@ -19,12 +19,25 @@ export interface ILeadRepository {
 
 export class TursoLeadRepository implements ILeadRepository {
     private readonly db: Client;
-    private readonly notificationService: INotificationService;
+    private readonly notificationService?: INotificationService;
     private initialization?: Promise<void>;
 
-    constructor(notificationService?: INotificationService, client?: Client) {
-        if (client) {
-            this.db = client;
+    constructor(
+        notificationServiceOrClient?: INotificationService | Client,
+        client?: Client
+    ) {
+        let notificationService: INotificationService | undefined;
+        let dbClient: Client | undefined;
+
+        if (notificationServiceOrClient && 'execute' in notificationServiceOrClient) {
+            dbClient = notificationServiceOrClient as Client;
+        } else {
+            notificationService = notificationServiceOrClient as INotificationService | undefined;
+            dbClient = client;
+        }
+
+        if (dbClient) {
+            this.db = dbClient;
         } else {
             const url = process.env.DATABASE_URL;
             const authToken = process.env.DATABASE_TOKEN;
@@ -33,7 +46,8 @@ export class TursoLeadRepository implements ILeadRepository {
             }
             this.db = createClient({ url, authToken });
         }
-        this.notificationService = notificationService ?? new NtfyNotificationService();
+
+        this.notificationService = notificationService ?? new BrevoNotificationService();
     }
 
     private async init(): Promise<void> {
@@ -72,15 +86,17 @@ export class TursoLeadRepository implements ILeadRepository {
             args: [lead.nome, lead.email, lead.whatsapp, lead.comentario, lead.status || 'enviado']
         });
 
-        try {
-            await this.notificationService.notifyNewLead({
-                nome: lead.nome,
-                email: lead.email,
-                whatsapp: lead.whatsapp,
-                comentario: lead.comentario,
-            });
-        } catch (error) {
-            console.error('[TursoLeadRepository] Erro ao enviar notificação após salvar lead:', error);
+        if (this.notificationService) {
+            try {
+                await this.notificationService.notifyNewLead({
+                    nome: lead.nome,
+                    email: lead.email,
+                    whatsapp: lead.whatsapp,
+                    comentario: lead.comentario,
+                });
+            } catch (error) {
+                console.error('[TursoLeadRepository] Erro ao enviar notificação Brevo após salvar lead:', error);
+            }
         }
     }
 

@@ -34,37 +34,12 @@ export class GroqAgentAdapter implements IAIAgentService {
       { role: 'user' as const, content: prompt }
     ];
 
-    const maxRetries = 3;
-    let delay = 1500;
+    const completion = await this.client.chat.completions.create({
+      model: this.model,
+      messages,
+      temperature: 0.6,
+    });
 
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        const completion = await this.client.chat.completions.create({
-          model: this.model,
-          messages,
-          temperature: 0.6,
-        });
-
-        return completion.choices[0]?.message?.content || 'Sem resposta do modelo.';
-      } catch (error: any) {
-        const isRateLimitOrUnavailable =
-          error?.status === 429 ||
-          error?.status === 503 ||
-          error?.message?.includes('429') ||
-          error?.message?.includes('503') ||
-          error?.message?.includes('rate limit');
-
-        if (isRateLimitOrUnavailable && attempt < maxRetries) {
-          console.warn(`[GROQ] Limite ou sobrecarga detectada. Tentativa ${attempt} de ${maxRetries}. Aguardando ${delay}ms...`);
-          await new Promise((res) => setTimeout(res, delay));
-          delay *= 2;
-          continue;
-        }
-
-        throw error;
-      }
-    }
-
-    return 'Serviço temporariamente indisponível. Por favor, tente novamente em instantes.';
+    return completion.choices[0]?.message?.content || 'Sem resposta do modelo.';
   }
 }

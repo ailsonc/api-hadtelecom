@@ -2,21 +2,30 @@ import 'dotenv/config';
 import express, { Request, Response, NextFunction } from 'express';
 import { securityMiddlewares } from './infrastructure/http/middlewares/security.middleware';
 import { GroqAgentAdapter } from './infrastructure/ai/groq-agent.adapter';
+import { GoogleAgentAdapter } from './infrastructure/ai/google-agent.adapter';
+import { FallbackAgentAdapter } from './infrastructure/ai/fallback-agent.adapter';
 import { SendChatMessageUseCase } from './application/use-cases/send-chat-message.use-case';
 import { ChatController } from './infrastructure/http/controllers/chat.controller';
 import { AuthController } from './infrastructure/http/controllers/auth.controller';
 import { authenticateToken } from './infrastructure/http/middlewares/auth.middleware';
 import { TursoLeadRepository } from './infrastructure/database/turso-lead.repository';
-import { NtfyNotificationService } from './infrastructure/notifications/ntfy-notification.service';
+import { BrevoNotificationService } from './infrastructure/notifications/brevo-notification.service';
 
 const app = express();
 app.use(express.json());
 app.use(securityMiddlewares);
 
 // Injeção de dependências
-const notificationService = new NtfyNotificationService();
+const notificationService = new BrevoNotificationService();
 const leadRepo = new TursoLeadRepository(notificationService);
-const aiAdapter = new GroqAgentAdapter(process.env.GROQ_API_KEY || '');
+
+// Provedores de IA com Fallback automático (GROQ -> GEMINI):
+// Para adicionar um 3º provedor amanhã, basta adicionar uma nova linha na lista abaixo
+const aiAdapter = new FallbackAgentAdapter([
+  { name: 'GROQ', provider: new GroqAgentAdapter() },
+  { name: 'GEMINI', provider: new GoogleAgentAdapter() },
+]);
+
 const sendChatUseCase = new SendChatMessageUseCase(aiAdapter, leadRepo);
 const chatController = new ChatController(sendChatUseCase);
 const authController = new AuthController();

@@ -5,9 +5,8 @@ import { INotificationService, LeadNotificationData } from '../../core/interface
 import { Client } from '@libsql/client';
 
 describe('TursoLeadRepository', () => {
-  it('deve salvar o lead dinâmico no banco e repassar exatamente os mesmos dados para a notificação', async () => {
+  it('deve salvar o lead dinâmico no banco com os argumentos corretos', async () => {
     let executedSql: any[] = [];
-    let notifiedLead: LeadNotificationData | null = null;
 
     const mockClient = {
       execute: async (stmt: any) => {
@@ -19,13 +18,7 @@ describe('TursoLeadRepository', () => {
       },
     } as unknown as Client;
 
-    const mockNotificationService: INotificationService = {
-      notifyNewLead: async (lead: LeadNotificationData) => {
-        notifiedLead = lead;
-      },
-    };
-
-    const repository = new TursoLeadRepository(mockNotificationService, mockClient);
+    const repository = new TursoLeadRepository(mockClient);
 
     // Simula dados reais coletados dinamicamente na conversa do chat
     const leadColetadoNaConversa = {
@@ -37,14 +30,6 @@ describe('TursoLeadRepository', () => {
     };
 
     await repository.save(leadColetadoNaConversa);
-
-    // Confirma que a notificação recebeu exatamente os mesmos dados coletados
-    assert.deepStrictEqual(notifiedLead, {
-      nome: leadColetadoNaConversa.nome,
-      email: leadColetadoNaConversa.email,
-      whatsapp: leadColetadoNaConversa.whatsapp,
-      comentario: leadColetadoNaConversa.comentario,
-    });
 
     // Confirma que o INSERT no banco foi chamado com os argumentos coletados
     const insertCall = executedSql.find(
@@ -60,7 +45,45 @@ describe('TursoLeadRepository', () => {
     ]);
   });
 
-  it('não deve falhar o salvamento no banco se o serviço de notificação falhar', async () => {
+  it('deve acionar o serviço de notificação após salvar o lead no Turso', async () => {
+    let notifiedLead: LeadNotificationData | null = null;
+
+    const mockClient = {
+      execute: async (stmt: any) => {
+        if (typeof stmt === 'string' && stmt.includes('PRAGMA table_info')) {
+          return { rows: [{ name: 'status' }] };
+        }
+        return { rows: [] };
+      },
+    } as unknown as Client;
+
+    const mockNotificationService: INotificationService = {
+      notifyNewLead: async (lead) => {
+        notifiedLead = lead;
+      },
+    };
+
+    const repository = new TursoLeadRepository(mockNotificationService, mockClient);
+
+    const leadData = {
+      nome: 'Maria Silva',
+      email: 'maria@hadtelecom.net.br',
+      whatsapp: '11977776666',
+      comentario: 'Gostaria de proposta comercial',
+      status: 'enviado',
+    };
+
+    await repository.save(leadData);
+
+    assert.deepStrictEqual(notifiedLead, {
+      nome: 'Maria Silva',
+      email: 'maria@hadtelecom.net.br',
+      whatsapp: '11977776666',
+      comentario: 'Gostaria de proposta comercial',
+    });
+  });
+
+  it('não deve quebrar o salvamento do lead se o serviço de notificação falhar', async () => {
     const mockClient = {
       execute: async (stmt: any) => {
         if (typeof stmt === 'string' && stmt.includes('PRAGMA table_info')) {
@@ -72,7 +95,7 @@ describe('TursoLeadRepository', () => {
 
     const mockNotificationService: INotificationService = {
       notifyNewLead: async () => {
-        throw new Error('Falha no webhook NTFY');
+        throw new Error('Falha simulada na API Brevo');
       },
     };
 
@@ -80,9 +103,9 @@ describe('TursoLeadRepository', () => {
 
     await assert.doesNotReject(async () => {
       await repository.save({
-        nome: 'Cliente Teste',
-        email: 'teste@email.com',
-        whatsapp: '11900000000',
+        nome: 'Lead Resiliente',
+        email: 'resiliente@teste.com',
+        whatsapp: '11955554444',
         comentario: 'Teste de resiliência',
       });
     });
