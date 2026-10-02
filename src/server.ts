@@ -7,13 +7,15 @@ import { ChatController } from './infrastructure/http/controllers/chat.controlle
 import { AuthController } from './infrastructure/http/controllers/auth.controller';
 import { authenticateToken } from './infrastructure/http/middlewares/auth.middleware';
 import { TursoLeadRepository } from './infrastructure/database/turso-lead.repository';
+import { NtfyNotificationService } from './infrastructure/notifications/ntfy-notification.service';
 
 const app = express();
 app.use(express.json());
 app.use(securityMiddlewares);
 
 // Injeção de dependências
-const leadRepo = new TursoLeadRepository();
+const notificationService = new NtfyNotificationService();
+const leadRepo = new TursoLeadRepository(notificationService);
 const aiAdapter = new GroqAgentAdapter(process.env.GROQ_API_KEY || '');
 const sendChatUseCase = new SendChatMessageUseCase(aiAdapter, leadRepo);
 const chatController = new ChatController(sendChatUseCase);

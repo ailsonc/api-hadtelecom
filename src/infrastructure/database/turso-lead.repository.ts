@@ -1,4 +1,6 @@
 import { createClient, type Client } from '@libsql/client';
+import { INotificationService } from '../../core/interfaces/notification-service.interface';
+import { NtfyNotificationService } from '../notifications/ntfy-notification.service';
 
 export interface LeadRecord {
     id?: number;
@@ -17,15 +19,21 @@ export interface ILeadRepository {
 
 export class TursoLeadRepository implements ILeadRepository {
     private readonly db: Client;
+    private readonly notificationService: INotificationService;
     private initialization?: Promise<void>;
 
-    constructor() {
-        const url = process.env.DATABASE_URL;
-        const authToken = process.env.DATABASE_TOKEN;
-        if (!url || !authToken) {
-            throw new Error('DATABASE_URL e DATABASE_TOKEN são obrigatórios para conectar ao Turso.');
+    constructor(notificationService?: INotificationService, client?: Client) {
+        if (client) {
+            this.db = client;
+        } else {
+            const url = process.env.DATABASE_URL;
+            const authToken = process.env.DATABASE_TOKEN;
+            if (!url || !authToken) {
+                throw new Error('DATABASE_URL e DATABASE_TOKEN são obrigatórios para conectar ao Turso.');
+            }
+            this.db = createClient({ url, authToken });
         }
-        this.db = createClient({ url, authToken });
+        this.notificationService = notificationService ?? new NtfyNotificationService();
     }
 
     private async init(): Promise<void> {
@@ -63,6 +71,17 @@ export class TursoLeadRepository implements ILeadRepository {
     `,
             args: [lead.nome, lead.email, lead.whatsapp, lead.comentario, lead.status || 'enviado']
         });
+
+        try {
+            await this.notificationService.notifyNewLead({
+                nome: lead.nome,
+                email: lead.email,
+                whatsapp: lead.whatsapp,
+                comentario: lead.comentario,
+            });
+        } catch (error) {
+            console.error('[TursoLeadRepository] Erro ao enviar notificação após salvar lead:', error);
+        }
     }
 
     async findAll(): Promise<LeadRecord[]> {
