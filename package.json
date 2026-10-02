@@ -15,7 +15,7 @@
   "license": "ISC",
   "dependencies": {
     "@google/genai": "^2.23.0",
-    "better-sqlite3": "^13.0.3",
+    "@libsql/client": "^0.18.0",
     "cors": "^2.8.6",
     "dotenv": "^18.0.2",
     "express": "^5.2.1",
@@ -25,7 +25,6 @@
     "jsonwebtoken": "^9.0.3"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^9.6.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",

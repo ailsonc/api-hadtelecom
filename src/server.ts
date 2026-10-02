@@ -6,14 +6,14 @@ import { SendChatMessageUseCase } from './application/use-cases/send-chat-messag
 import { ChatController } from './infrastructure/http/controllers/chat.controller';
 import { AuthController } from './infrastructure/http/controllers/auth.controller';
 import { authenticateToken } from './infrastructure/http/middlewares/auth.middleware';
-import { SqliteLeadRepository } from './infrastructure/database/sqlite-lead.repository';
+import { TursoLeadRepository } from './infrastructure/database/turso-lead.repository';
 
 const app = express();
 app.use(express.json());
 app.use(securityMiddlewares);
 
 // Injeção de dependências
-const leadRepo = new SqliteLeadRepository();
+const leadRepo = new TursoLeadRepository();
 const aiAdapter = new GroqAgentAdapter(process.env.GROQ_API_KEY || '');
 const sendChatUseCase = new SendChatMessageUseCase(aiAdapter, leadRepo);
 const chatController = new ChatController(sendChatUseCase);
@@ -26,8 +26,8 @@ app.post('/api/chat', (req: Request, res: Response) => chatController.handle(req
 app.post('/api/login', (req: Request, res: Response) => authController.login(req, res));
 
 // Rota de Consulta de Leads (Protegida por Token)
-app.get('/api/leads', authenticateToken, (_req: Request, res: Response) => {
-  const leads = leadRepo.findAll();
+app.get('/api/leads', authenticateToken, async (_req: Request, res: Response) => {
+  const leads = await leadRepo.findAll();
   res.status(200).json(leads);
 });
 

@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { SendChatMessageUseCase } from './send-chat-message.use-case';
 import { IAIAgentService } from '../../core/interfaces/ai-agent.interface';
-import { ILeadRepository, LeadRecord } from '../../infrastructure/database/sqlite-lead.repository';
+import { ILeadRepository, LeadRecord } from '../../infrastructure/database/turso-lead.repository';
 import { ChatMessage } from '../../core/domain/chat.entity';
 
 describe('SendChatMessageUseCase', () => {
@@ -87,10 +87,10 @@ LEAD_DATA>>>`;
 
       let capturedLead: Omit<LeadRecord, 'id' | 'created_at'> | null = null;
       const mockLeadRepo: ILeadRepository = {
-        save: (lead) => {
+        save: async (lead) => {
           capturedLead = lead;
         },
-        findAll: () => [],
+        findAll: async () => [],
       };
 
       const mockAiService: IAIAgentService = {
@@ -125,10 +125,10 @@ LEAD_DATA>>>`;
 
       let repoCalled = false;
       const mockLeadRepo: ILeadRepository = {
-        save: () => {
+        save: async () => {
           repoCalled = true;
         },
-        findAll: () => [],
+        findAll: async () => [],
       };
 
       const mockAiService: IAIAgentService = {
@@ -155,10 +155,10 @@ LEAD_DATA>>>`;
 LEAD_DATA>>>`;
 
       const mockLeadRepo: ILeadRepository = {
-        save: () => {
-          throw new Error('Falha no banco SQLite');
+        save: async () => {
+          throw new Error('Falha no banco Turso');
         },
-        findAll: () => [],
+        findAll: async () => [],
       };
 
       const mockAiService: IAIAgentService = {

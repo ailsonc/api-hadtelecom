@@ -1,15 +1,15 @@
 import { IAIAgentService } from '../../core/interfaces/ai-agent.interface';
 import { ChatMessage, ChatResponse } from '../../core/domain/chat.entity';
-import { ILeadRepository, SqliteLeadRepository } from '../../infrastructure/database/sqlite-lead.repository';
+import { ILeadRepository, TursoLeadRepository } from '../../infrastructure/database/turso-lead.repository';
 
 export class SendChatMessageUseCase {
-  private readonly leadRepo: ILeadRepository;
+  private readonly leadRepo: ILeadRepository | undefined;
 
   constructor(
     private readonly aiService: IAIAgentService,
     leadRepo?: ILeadRepository
   ) {
-    this.leadRepo = leadRepo ?? new SqliteLeadRepository();
+    this.leadRepo = leadRepo;
   }
 
   async execute(history: ChatMessage[], prompt: string): Promise<ChatResponse> {
@@ -31,8 +31,8 @@ export class SendChatMessageUseCase {
       try {
         const leadData = JSON.parse(jsonContent);
 
-        // Salva instantaneamente no SQLite sem latência de rede
-        this.leadRepo.save({
+        const leadRepo = this.leadRepo ?? new TursoLeadRepository();
+        await leadRepo.save({
           nome: leadData.nome,
           email: leadData.email,
           whatsapp: leadData.whatsapp,
@@ -41,9 +41,9 @@ export class SendChatMessageUseCase {
         });
 
         leadSaved = true;
-        console.log('[LEAD] Salvo com sucesso no SQLite!');
+        console.log('[LEAD] Salvo com sucesso no Turso!');
       } catch (err) {
-        console.error('[LEAD] Erro ao persistir no SQLite:', err);
+        console.error('[LEAD] Erro ao persistir no Turso:', err);
       }
     }
 
