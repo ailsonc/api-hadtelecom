@@ -2,9 +2,11 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { TursoLeadRepository } from './turso-lead.repository';
 import { INotificationService, LeadNotificationData } from '../../core/interfaces/notification-service.interface';
+import { EncryptionService } from '../security/encryption.service';
 import { Client } from '@libsql/client';
 
 describe('TursoLeadRepository', () => {
+  const encryptionService = new EncryptionService();
   it('deve salvar o lead dinâmico no banco com os argumentos corretos', async () => {
     let executedSql: any[] = [];
 
@@ -31,18 +33,54 @@ describe('TursoLeadRepository', () => {
 
     await repository.save(leadColetadoNaConversa);
 
-    // Confirma que o INSERT no banco foi chamado com os argumentos coletados
+    // Confirma que o INSERT no banco foi chamado com os dados devidamente criptografados
     const insertCall = executedSql.find(
       (call) => typeof call === 'object' && call.sql && call.sql.includes('INSERT INTO leads')
     );
     assert.ok(insertCall, 'O comando INSERT INTO leads deve ter sido executado');
-    assert.deepStrictEqual(insertCall.args, [
-      leadColetadoNaConversa.nome,
-      leadColetadoNaConversa.email,
-      leadColetadoNaConversa.whatsapp,
-      leadColetadoNaConversa.comentario,
-      leadColetadoNaConversa.status,
-    ]);
+
+    // Valida que os dados salvos no banco não estão em texto claro (protegidos contra vazamento)
+    assert.ok(typeof insertCall.args[0] === 'string' && insertCall.args[0].startsWith('enc:v1:'));
+    assert.ok(typeof insertCall.args[1] === 'string' && insertCall.args[1].startsWith('enc:v1:'));
+    assert.ok(typeof insertCall.args[2] === 'string' && insertCall.args[2].startsWith('enc:v1:'));
+    assert.ok(typeof insertCall.args[3] === 'string' && insertCall.args[3].startsWith('enc:v1:'));
+    assert.strictEqual(insertCall.args[4], leadColetadoNaConversa.status);
+  });
+
+  it('deve descriptografar os dados ao consultar os leads via findAll', async () => {
+    const rawEncryptedRows = [
+      {
+        id: 1,
+        // Criptografado com prefixo enc:v1
+        nome: encryptionService.encrypt('Cliente Criptografado'),
+        email: encryptionService.encrypt('cliente@seguro.com'),
+        whatsapp: encryptionService.encrypt('11999990000'),
+        comentario: encryptionService.encrypt('Dúvida confidencial'),
+        status: 'enviado',
+        created_at: '2026-10-02 20:00:00',
+      },
+    ];
+
+    const mockClient = {
+      execute: async (stmt: any) => {
+        if (typeof stmt === 'string' && stmt.includes('PRAGMA table_info')) {
+          return { rows: [{ name: 'status' }] };
+        }
+        if (typeof stmt === 'string' && stmt.includes('SELECT * FROM leads')) {
+          return { rows: rawEncryptedRows };
+        }
+        return { rows: [] };
+      },
+    } as unknown as Client;
+
+    const repo = new TursoLeadRepository(mockClient);
+    const leads = await repo.findAll();
+
+    assert.strictEqual(leads.length, 1);
+    assert.strictEqual(leads[0]?.nome, 'Cliente Criptografado');
+    assert.strictEqual(leads[0]?.email, 'cliente@seguro.com');
+    assert.strictEqual(leads[0]?.whatsapp, '11999990000');
+    assert.strictEqual(leads[0]?.comentario, 'Dúvida confidencial');
   });
 
   it('deve acionar o serviço de notificação após salvar o lead no Turso', async () => {

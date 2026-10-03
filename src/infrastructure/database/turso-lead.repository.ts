@@ -1,6 +1,7 @@
 import { createClient, type Client } from '@libsql/client';
 import { INotificationService } from '../../core/interfaces/notification-service.interface';
 import { BrevoNotificationService } from '../notifications/brevo-notification.service';
+import { EncryptionService } from '../security/encryption.service';
 
 export interface LeadRecord {
     id?: number;
@@ -20,11 +21,13 @@ export interface ILeadRepository {
 export class TursoLeadRepository implements ILeadRepository {
     private readonly db: Client;
     private readonly notificationService?: INotificationService;
+    private readonly encryptionService: EncryptionService;
     private initialization?: Promise<void>;
 
     constructor(
         notificationServiceOrClient?: INotificationService | Client,
-        client?: Client
+        client?: Client,
+        encryptionService?: EncryptionService
     ) {
         let notificationService: INotificationService | undefined;
         let dbClient: Client | undefined;
@@ -48,6 +51,7 @@ export class TursoLeadRepository implements ILeadRepository {
         }
 
         this.notificationService = notificationService ?? new BrevoNotificationService();
+        this.encryptionService = encryptionService ?? new EncryptionService();
     }
 
     private async init(): Promise<void> {
@@ -78,14 +82,22 @@ export class TursoLeadRepository implements ILeadRepository {
 
     async save(lead: Omit<LeadRecord, 'id' | 'created_at'>): Promise<void> {
         await this.ensureInitialized();
+
+        // Criptografia de dados sensíveis antes de salvar no banco Turso (LGPD / Proteção de PII)
+        const encryptedNome = this.encryptionService.encrypt(lead.nome);
+        const encryptedEmail = this.encryptionService.encrypt(lead.email);
+        const encryptedWhatsapp = this.encryptionService.encrypt(lead.whatsapp);
+        const encryptedComentario = this.encryptionService.encrypt(lead.comentario);
+
         await this.db.execute({
             sql: `
       INSERT INTO leads (nome, email, whatsapp, comentario, status)
       VALUES (?, ?, ?, ?, ?)
     `,
-            args: [lead.nome, lead.email, lead.whatsapp, lead.comentario, lead.status || 'enviado']
+            args: [encryptedNome, encryptedEmail, encryptedWhatsapp, encryptedComentario, lead.status || 'enviado']
         });
 
+        // A notificação interna recebe os dados originais legíveis em texto claro
         if (this.notificationService) {
             try {
                 await this.notificationService.notifyNewLead({
@@ -103,6 +115,15 @@ export class TursoLeadRepository implements ILeadRepository {
     async findAll(): Promise<LeadRecord[]> {
         await this.ensureInitialized();
         const result = await this.db.execute('SELECT * FROM leads ORDER BY created_at DESC');
-        return result.rows as unknown as LeadRecord[];
+        const rows = result.rows as unknown as LeadRecord[];
+
+        // Descriptografa os dados para exibição autorizada (ex: rota /api/leads protegida por JWT)
+        return rows.map((row) => ({
+            ...row,
+            nome: this.encryptionService.decrypt(row.nome),
+            email: this.encryptionService.decrypt(row.email),
+            whatsapp: this.encryptionService.decrypt(row.whatsapp),
+            comentario: this.encryptionService.decrypt(row.comentario),
+        }));
     }
 }
