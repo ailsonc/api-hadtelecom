@@ -328,7 +328,7 @@ npm test
 Este projeto é desenvolvido e mantido por:
 
 * **Responsável Técnico**: Ailson Costa
-* **Engenharia de Software**: HadTelecom & Grupo Multi
+* **Engenharia de Software**: HadTelecom
 * **E-mail de Contato**: [ailsonlcosta@gmail.com](mailto:ailsonlcosta@gmail.com) | [ailson.costa@hadtelecom.net.br](mailto:ailson.costa@hadtelecom.net.br)
 * **Portal Oficial**: [hadtelecom.net.br](https://hadtelecom.net.br)
 
